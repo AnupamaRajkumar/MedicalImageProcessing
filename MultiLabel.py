@@ -13,6 +13,7 @@ from torchvision import datasets, transforms, models
 from torch.utils.data.dataset import Dataset
 import os.path
 from os import path
+from itertools import cycle, islice
 
 #bag of words of labels
 def gen_set(csvfile, outputfile):
@@ -130,18 +131,14 @@ class XRaysTrainDataset(Dataset):
                 #print(diag)
                 if(diag != 'Undiagnosed'):
                     imgLab.append(diag)
-                    #image_Label.append(imgLab)
-                    #image_Label = imgLab.copy()
 
             if(cnt == 14):
                 imageName.append(word)
             cnt+=1 
-        
-        print(imageName)  
+         
         if not imgLab:
             imgLab.append("Undiagnosed")
-            #image_Label = imgLab.copy()                                   
-        print(imgLab)
+
         return imageName, imgLab           
     
 
@@ -157,12 +154,15 @@ train_transform = transforms.Compose([transforms.Resize(256),
 traindataLoader = XRaysTrainDataset('chestxraytrain.txt', transform = train_transform)
 trainLoader = torch.utils.data.DataLoader(traindataLoader, batch_size = 1, shuffle = True)
 
-imageName= trainLoader        #next(iter(trainLoader))                   
+batch_size = 15
 print("in trainloader")
-print(imageName)
-for i, batch in enumerate(imageName):
-    print(i, batch)
-    print('------------------------------------------------------')
+for b in range(batch_size):
+    dataiter = iter(trainLoader)
+    images, labels = dataiter.next()
+    print(images)
+    print(labels)
+    print("--------------------------------------------------------------------")
+
 
 
 
