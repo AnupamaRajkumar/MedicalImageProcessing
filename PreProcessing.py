@@ -3,75 +3,75 @@ import numpy as np
 from PIL import Image
 
 def PreProcessing(image):
-    #step 1 : resize the image to 512 x 512
-    resized = cv2.resize(image, (512, 512))
-
+  
     #step 2: Convert image to grayscale
-    gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     #step 3: Smoothing out the noise in the image
-    filImg = cv2.GaussianBlur(gray, (3,3), 0)
+    filImg = cv2.GaussianBlur(gray, (5,5), 6)
 
     #step 4: Histogram equalisation
     hist = cv2.equalizeHist(filImg)
 
     #step 5: Thresholding
-    ret, binImg = cv2.threshold(hist, 127, 255, cv2.THRESH_BINARY)
+    ret, binImg = cv2.threshold(hist, 120, 255, cv2.THRESH_BINARY)
 
-    #cropping unnecessary height and width
-    offset_x = 60
-    offset_y = 70
-    x = 50
-    y = 10
-    width = binImg.shape[0] - offset_x
-    height = binImg.shape[1] - offset_y
-    crop = binImg[y:height, x:width]
-    #cv2.imshow("Crop", crop)
-
+    #cv2.imshow("hist", binImg)
+ 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-    return crop
+    return hist, binImg
 
 
 def Segments(crop):
-    #find edges
-    edged = cv2.Canny(crop, 1, 10)
-    #cv2.imshow("edges", edged)
 
+    #opening operation
+    edged = cv2.Canny(crop, 0, 255)
+    print(len(edged))
+    #cv2.imshow("binary", edged)
+  
     #find contours
     cnt, hierarchy = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cnts = sorted(cnt, key = cv2.contourArea, reverse = True)[:1]
+    print(len(cnt))
+    kernel = np.zeros((10,10),np.uint8)
+    #openImg = cv2.morphologyEx(edged, cv2.MORPH_CLOSE, kernel)
+    openImg = cv2.dilate(edged, kernel)
+    openImg = cv2.dilate(openImg, kernel)
+    print(len(cnt))
+    cnt, hierarchy = cv2.findContours(openImg.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = sorted(cnt, key = cv2.contourArea, reverse = True)[:len(cnt)]
+
     # Find the convex hull object for each contour
     hull_list = []
-    for i in range(len(cnts)):
+    for i in range(len(cnts)):       
+        #print(cv2.contourArea(cnts[i]))
         hull = cv2.convexHull(cnts[i])
         hull_list.append(hull)
 
-    #cv2.drawContours(edged, cnts, -1, (0,0,255), 2)
-    for i in range(len(cnts)):
-        cv2.drawContours(edged, hull_list, -1, (0,0,255), 2)
+    #print(len(hull_list))
+    cv2.drawContours(openImg, hull_list, -1, (255,255,255), -1)
 
-    cv2.imshow("Hull", edged)
-
-    #opening operation
-    kernel = np.zeros((7,7),np.uint8)
-    openImg = cv2.morphologyEx(edged, cv2.MORPH_OPEN, kernel)
-    cv2.imshow("Open", openImg)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    cv2.imshow("Hull", openImg)
+    return openImg
 
 
-
-path =  'D:\EIT_AUS_TUB\SoSe2020_MLInMIP\Images\Image_7.jpeg'
+path =  'D:\EIT_AUS_TUB\SoSe2020_MLInMIP\Images\Image_1.jpeg'
 #step1 : Read image
 image = cv2.imread(path)
-cv2.imshow("Image", image)
+#cv2.imshow("Image", image)
 #preprocessing image
-crop = PreProcessing(image)
+resized = cv2.resize(image, (512, 512))
+hist, binImg = PreProcessing(resized)
 
 #lung segments
-Segments(crop)
+segments = Segments(binImg)
+
+overlap = cv2.bitwise_and(hist, segments)
+
+cv2.imshow("Hist", hist)
+
+cv2.imshow("Overlap", overlap)
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
